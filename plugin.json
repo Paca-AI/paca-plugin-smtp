@@ -1,0 +1,116 @@
+{
+  "id": "com.paca.smtp",
+  "displayName": "SMTP Email",
+  "description": "Sends transactional emails — new-account invites, task-assignment and mention notifications — over an admin-configured SMTP server.",
+  "version": "0.1.0",
+  "minCoreVersion": "v0.13.0",
+  "permissions": ["db.read", "db.write", "events.subscribe", "email.send", "users.password_set_token.issue"],
+  "backend": {
+    "allowedConfigKeys": ["ENCRYPTION_KEY", "PUBLIC_URL"],
+    "sensitiveFields": {
+      "smtp_config": ["password_enc"]
+    },
+    "eventSubscriptions": [
+      "user.created",
+      "user.password_reset",
+      "notification.assigned",
+      "notification.mentioned",
+      "notification.doc_mentioned",
+      "notification.task_description_mentioned"
+    ],
+    "routes": [
+      {
+        "method": "GET",
+        "path": "/admin/config",
+        "middlewares": [
+          { "name": "optionalAuthn" },
+          { "name": "requireFreshPassword" },
+          {
+            "name": "requirePermissions",
+            "scope": "global",
+            "permissions": ["users.write"]
+          }
+        ]
+      },
+      {
+        "method": "PATCH",
+        "path": "/admin/config",
+        "middlewares": [
+          { "name": "optionalAuthn" },
+          { "name": "requireFreshPassword" },
+          {
+            "name": "requirePermissions",
+            "scope": "global",
+            "permissions": ["users.write"]
+          }
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/admin/test-email",
+        "middlewares": [
+          { "name": "optionalAuthn" },
+          { "name": "requireFreshPassword" },
+          {
+            "name": "requirePermissions",
+            "scope": "global",
+            "permissions": ["users.write"]
+          }
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/me/preferences",
+        "middlewares": [
+          { "name": "optionalAuthn" },
+          { "name": "requireFreshPassword" },
+          {
+            "name": "requirePermissions",
+            "scope": "global",
+            "permissions": ["users.read"]
+          }
+        ]
+      },
+      {
+        "method": "PATCH",
+        "path": "/me/preferences",
+        "middlewares": [
+          { "name": "optionalAuthn" },
+          { "name": "requireFreshPassword" },
+          {
+            "name": "requirePermissions",
+            "scope": "global",
+            "permissions": ["users.read"]
+          }
+        ]
+      }
+    ]
+  },
+  "frontend": {
+    "remoteEntryUrl": "/plugins/com.paca.smtp/assets/remoteEntry.js",
+    "extensionPoints": [
+      {
+        "point": "admin.page",
+        "component": "AdminSmtpSettingsPage",
+        "label": "Email (SMTP)",
+        "order": 50
+      },
+      {
+        "point": "user.settings.tab",
+        "component": "EmailPreferencesTab",
+        "label": "Email Notifications",
+        "order": 10
+      }
+    ],
+    "navItems": [
+      {
+        "scope": "admin",
+        "slug": "smtp",
+        "label": "Email (SMTP)",
+        "icon": "Mail",
+        "component": "AdminSmtpSettingsPage",
+        "order": 50
+      }
+    ]
+  }
+}
