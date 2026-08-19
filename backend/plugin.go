@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	plugin "github.com/Paca-AI/plugin-sdk-go"
 )
 
@@ -68,4 +70,8 @@ func (p *smtpPlugin) Init(ctx *plugin.Context) error {
 
 func (p *smtpPlugin) Shutdown() {
 	p.log.Info("com.paca.smtp shutdown")
+}
+
+func nowStr() string {
+	return time.Now().UTC().Format(time.RFC3339Nano)
 }

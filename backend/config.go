@@ -24,7 +24,7 @@ type smtpConfig struct {
 // (never including the decrypted password) and the raw encrypted password
 // separately, for callers (sendEmail paths) that need to decrypt it.
 func (p *smtpPlugin) loadConfig() (*smtpConfig, string, error) {
-	result, err := p.db.Query(`SELECT host, port, username, password_enc, from_address, from_name, use_tls, enabled_events FROM smtp_config WHERE id = TRUE`)
+	result, err := p.db.Query(`SELECT host, port, username, password_enc, from_address, from_name, use_tls, enabled_events FROM smtp_config WHERE id = $1`, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -149,10 +149,10 @@ func (p *smtpPlugin) updateAdminConfig(req *plugin.Request, res *plugin.Response
 
 	if _, err := p.db.Exec(
 		`UPDATE smtp_config SET host = $1, port = $2, username = $3, password_enc = $4,
-		 from_address = $5, from_name = $6, use_tls = $7, enabled_events = $8, updated_at = now()
-		 WHERE id = TRUE`,
+		 from_address = $5, from_name = $6, use_tls = $7, enabled_events = $8, updated_at = $9
+		 WHERE id = $10`,
 		body.Host, body.Port, body.Username, passwordEnc,
-		body.FromAddress, body.FromName, body.UseTLS, string(eventsJSON),
+		body.FromAddress, body.FromName, body.UseTLS, string(eventsJSON), nowStr(), true,
 	); err != nil {
 		p.log.Error("updateAdminConfig: " + err.Error())
 		res.Error(500, "failed to save config")
