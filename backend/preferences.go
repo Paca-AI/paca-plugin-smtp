@@ -79,9 +79,9 @@ func (p *smtpPlugin) updateMyPreferences(req *plugin.Request, res *plugin.Respon
 
 	if _, err := p.db.Exec(
 		`INSERT INTO user_email_preferences (user_id, disabled_events, updated_at)
-		 VALUES ($1, $2, now())
-		 ON CONFLICT (user_id) DO UPDATE SET disabled_events = EXCLUDED.disabled_events, updated_at = now()`,
-		userID, string(disabledJSON),
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (user_id) DO UPDATE SET disabled_events = EXCLUDED.disabled_events, updated_at = EXCLUDED.updated_at`,
+		userID, string(disabledJSON), nowStr(),
 	); err != nil {
 		p.log.Error("updateMyPreferences: " + err.Error())
 		res.Error(500, "failed to save preferences")
