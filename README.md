@@ -41,11 +41,20 @@ smtp/
 
 ### Backend (`backend/`)
 
-- Written in Go, compiled to `wasip1/wasm` for production (`main.go` carries
-  a `//go:build wasip1` tag, so a plain `go build ./...` without
-  `GOOS=wasip1 GOARCH=wasm` fails with "function main is undeclared in the
-  main package" — expected, not a real error; `go vet`/`go test` work fine
-  without the cross-compile target).
+- Written in Go, compiled to `wasip1/wasm` for production with TinyGo, same
+  as every other plugin in this org. `templates.go` used to render email
+  bodies with `html/template` — which panicked at runtime under TinyGo,
+  since `text/template` bootstraps its builtin function map via
+  `reflect.Type.NumOut()` on first use and TinyGo's `reflect` package
+  doesn't fully implement that. It's since been rewritten to build the HTML
+  by hand (`buildLayoutHTML`, `escapeHTML`/`safeURL`/`safeHexColor`),
+  replicating html/template's contextual auto-escaping per field instead of
+  getting it from the stdlib — see the package comment at the top of
+  `templates.go` for the reasoning, and `templates_test.go` for the escaping
+  test coverage. (`main.go` carries a `//go:build wasip1` tag, so a plain
+  `go build ./...` without `-target=wasip1` fails with "function main is
+  undeclared in the main package" — expected, not a real
+  error; `go vet`/`go test` work fine without the cross-compile target).
 - Registered as `com.paca.smtp` in the plugin registry.
 - Owns its own schema (`plugin_data_com_paca_smtp`): a singleton
   `smtp_config` row (server settings + which optional events are enabled)
@@ -168,8 +177,8 @@ cd backend
 go vet ./...
 go test ./...
 
-# Build the WASM binary
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o backend.wasm .
+# Build the WASM binary (requires TinyGo — see https://tinygo.org/getting-started/install/)
+tinygo build -target=wasip1 -buildmode=c-shared -o backend.wasm .
 ```
 
 Requires `ENCRYPTION_KEY` (a 32-byte hex string, same value the host also
