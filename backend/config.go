@@ -223,11 +223,11 @@ func (p *smtpPlugin) sendTestEmail(req *plugin.Request, res *plugin.Response) {
 	branding, _ := plugin.GetBranding()
 	subject, html, text := renderTestEmail(branding)
 
-	if err := p.sendEmail(sendEmailInput{
+	if err := p.sendEmail(sendEmailInput{ //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 		Host: cfg.Host, Port: cfg.Port, Username: cfg.Username, Password: password,
 		UseTLS: cfg.UseTLS, From: cfg.FromAddress, FromName: cfg.FromName,
 		To: to, Subject: subject, HTMLBody: html, TextBody: text,
-	}); err != nil {
+	}); err != nil { //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 		p.log.Error("sendTestEmail: send: " + err.Error())
 		res.Error(502, "failed to send: "+err.Error())
 		return

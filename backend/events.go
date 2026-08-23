@@ -76,8 +76,8 @@ func (p *smtpPlugin) handleEvent(topic string) plugin.EventHandler {
 			// this user_id, only because this plugin has decided (SMTP
 			// configured, mandatory topic) that it's actually going to
 			// deliver a set-password link.
-			token, err := p.issuePasswordSetToken(data.UserID)
-			if err != nil {
+			token, err := p.issuePasswordSetToken(data.UserID) //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
+			if err != nil { //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 				p.log.Error("handleEvent(" + topic + "): issue password set token: " + err.Error())
 				return
 			}
@@ -110,12 +110,12 @@ func (p *smtpPlugin) handleEvent(topic string) plugin.EventHandler {
 			return
 		}
 
-		if err := p.sendEmail(sendEmailInput{
+		if err := p.sendEmail(sendEmailInput{ //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 			Host: cfg.Host, Port: cfg.Port, Username: cfg.Username, Password: password,
 			UseTLS: cfg.UseTLS, From: cfg.FromAddress, FromName: cfg.FromName,
 			To: recipientEmail, ToName: recipientName,
 			Subject: subject, HTMLBody: htmlBody, TextBody: textBody,
-		}); err != nil {
+		}); err != nil { //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 			p.log.Error("handleEvent(" + topic + "): send: " + err.Error())
 			return
 		}
