@@ -2,7 +2,7 @@
   "id": "com.paca.smtp",
   "displayName": "SMTP Email",
   "description": "Sends transactional emails — new-account invites, task-assignment and mention notifications — over an admin-configured SMTP server.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minCoreVersion": "v0.13.3",
   "permissions": ["db.read", "db.write", "events.subscribe", "email.send", "users.password_set_token.issue"],
   "backend": {
