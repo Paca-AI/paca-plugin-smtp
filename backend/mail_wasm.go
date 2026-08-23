@@ -28,7 +28,12 @@ type sendEmailResult struct {
 // sendEmail dispatches an email through the host's SMTP client.
 func (p *smtpPlugin) sendEmail(in sendEmailInput) error {
 	var res sendEmailResult
-	if err := plugin.CallHostFunction(hostSendEmail, in, &res); err != nil {
+	// Wrapped in a closure rather than passed directly: TinyGo requires a
+	// go:wasmimport function to be called by name, not taken as a value.
+	call := func(reqPtr, reqLen, resPtrPtr, resLenPtr int64) {
+		hostSendEmail(reqPtr, reqLen, resPtrPtr, resLenPtr)
+	}
+	if err := plugin.CallHostFunction(call, in, &res); err != nil {
 		return err
 	}
 	if res.Error != "" {

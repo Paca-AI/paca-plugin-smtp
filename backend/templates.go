@@ -1,9 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"html/template"
+	"html"
 	"strings"
 
 	plugin "github.com/Paca-AI/plugin-sdk-go"
@@ -26,9 +25,9 @@ const (
 	colorPrimaryFg       = "#ffffff" // --primary-foreground
 )
 
-// emailLayoutData is the data the shared layout template renders. Paragraphs
-// are plain strings — html/template auto-escapes them, so callers never
-// build raw HTML fragments by hand.
+// emailLayoutData is the data buildLayoutHTML renders. Paragraphs are plain
+// strings — buildLayoutHTML escapes them, so callers never build raw HTML
+// fragments by hand.
 type emailLayoutData struct {
 	Subject      string
 	BrandName    string
@@ -41,55 +40,128 @@ type emailLayoutData struct {
 	FooterText   string
 }
 
-// layoutHTML is the shared email chrome: logo/brand header, heading +
-// paragraphs, an optional brand-colored CTA button, and a footer. Table-based
-// layout with inline styles throughout for email-client compatibility (most
-// clients strip <style> blocks and many ignore border-radius/box-shadow —
-// both are used here only as graceful-degrading touches, matching the web
-// app's rounded-corner, low-shadow "High-Contrast Minimalism" light-mode
-// look — not load-bearing for legibility). Colors/fonts are pulled directly
-// from apps/web/src/index.css's :root (light) block; see the color* consts
-// above and brandFrom's doc comment.
-var layoutHTML = template.Must(template.New("layout").Parse(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{.Subject}}</title>
-<!-- Same web fonts as the app (apps/web/src/index.css). Ignored by clients
-     that strip remote font loading in email — the inline font-family
-     stacks below already fall back to system sans-serif in that case. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500;600&display=swap">
-</head>
-<body style="margin:0;padding:0;background-color:` + colorMuted + `;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:` + colorMuted + `;padding:32px 16px;">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:` + colorCard + `;border-radius:12px;border:1px solid ` + colorBorder + `;">
-<tr><td style="padding:28px 32px 24px 32px;border-bottom:1px solid ` + colorBorder + `;">
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
-<td style="padding-right:10px;vertical-align:middle;"><img src="{{.LogoURL}}" alt="{{.BrandName}}" width="36" height="36" style="display:block;width:36px;height:36px;border:0;"></td>
-<td style="vertical-align:middle;"><span style="font-family:'Syne',ui-sans-serif,sans-serif;font-size:19px;font-weight:700;color:` + colorForeground + `;">{{.BrandName}}</span></td>
-</tr></table>
-</td></tr>
-<tr><td style="padding:32px 32px 8px 32px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;">
-<h1 style="margin:0 0 14px 0;font-size:18px;line-height:1.4;color:` + colorForeground + `;font-weight:600;">{{.Heading}}</h1>
-{{range .Paragraphs}}<p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:` + colorMutedForeground + `;">{{.}}</p>
-{{end}}</td></tr>
-{{if .ButtonURL}}<tr><td style="padding:8px 32px 32px 32px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:8px;background-color:{{.PrimaryColor}};">
-<a href="{{.ButtonURL}}" style="display:inline-block;padding:10px 22px;font-size:14px;font-weight:600;color:` + colorPrimaryFg + `;text-decoration:none;">{{.ButtonLabel}}</a>
-</td></tr></table>
-<p style="margin:16px 0 0 0;font-size:12px;line-height:1.5;color:` + colorMutedForeground + `;word-break:break-all;">{{.ButtonURL}}</p>
-</td></tr>{{end}}
-<tr><td style="padding:18px 32px;background-color:` + colorMuted + `;border-top:1px solid ` + colorBorder + `;border-radius:0 0 12px 12px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;">
-<p style="margin:0;font-size:12px;line-height:1.5;color:` + colorMutedForeground + `;">{{.FooterText}}</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>
-`))
+// escapeHTML escapes s for safe interpolation into HTML text content or a
+// double-quoted HTML attribute value.
+func escapeHTML(s string) string {
+	return html.EscapeString(s)
+}
+
+// safeURL returns s unchanged (HTML-escaped) if it's safe to embed in an
+// href/src attribute — http(s), protocol-relative, or a path/fragment — and
+// a harmless "#" placeholder otherwise. Rejects a javascript:/data:-style
+// scheme, the same protection html/template's contextual auto-escaper
+// applied to a URL-valued attribute before this file stopped depending on
+// it (see the package comment on why: TinyGo's reflect implementation can't
+// run html/template's own bootstrap).
+func safeURL(s string) string {
+	trimmed := strings.TrimSpace(s)
+	lower := strings.ToLower(trimmed)
+	switch {
+	case trimmed == "":
+		return ""
+	case strings.HasPrefix(lower, "http://"), strings.HasPrefix(lower, "https://"),
+		strings.HasPrefix(trimmed, "//"), strings.HasPrefix(trimmed, "/"), strings.HasPrefix(trimmed, "#"):
+		return html.EscapeString(trimmed)
+	default:
+		return "#"
+	}
+}
+
+// safeHexColor returns s unchanged if it's a valid #rgb or #rrggbb hex
+// color, and fallback otherwise. PrimaryColor is interpolated directly into
+// a CSS declaration (background-color:...;), a context HTML-escaping alone
+// doesn't protect: a value like "red;background:url(evil)" contains no HTML
+// special characters but would inject arbitrary CSS. Restricting to a
+// validated hex color sidesteps needing real CSS-value escaping.
+func safeHexColor(s, fallback string) string {
+	if len(s) != 4 && len(s) != 7 {
+		return fallback
+	}
+	if s[0] != '#' {
+		return fallback
+	}
+	for _, c := range s[1:] {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return fallback
+		}
+	}
+	return s
+}
+
+// buildLayoutHTML renders the shared email chrome: logo/brand header,
+// heading + paragraphs, an optional brand-colored CTA button, and a footer.
+// Table-based layout with inline styles throughout for email-client
+// compatibility (most clients strip <style> blocks and many ignore
+// border-radius/box-shadow — both are used here only as graceful-degrading
+// touches, matching the web app's rounded-corner, low-shadow "High-Contrast
+// Minimalism" light-mode look — not load-bearing for legibility).
+// Colors/fonts are pulled directly from apps/web/src/index.css's :root
+// (light) block; see the color* consts above and brandFrom's doc comment.
+//
+// Built directly with strings.Builder rather than html/template: every
+// plugin in this org builds with TinyGo, and TinyGo's reflect package can't
+// run text/template's builtin-function-map bootstrap (reflect.Type.NumOut()
+// on a func value), which panics at runtime the moment any template — even
+// one with no custom FuncMap — is first executed. Each field below is
+// escaped for the specific context it's interpolated into (escapeHTML for
+// text/attributes, safeURL for href/src, safeHexColor for the one CSS-value
+// use), replicating what html/template's contextual auto-escaping did for
+// free — see each helper's doc comment for why HTML-escaping alone isn't
+// enough for the URL and color cases.
+func buildLayoutHTML(data emailLayoutData) string {
+	primaryColor := safeHexColor(data.PrimaryColor, defaultPrimaryColor)
+	logoURL := safeURL(data.LogoURL)
+	buttonURL := safeURL(data.ButtonURL)
+
+	var b strings.Builder
+	b.WriteString("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>")
+	b.WriteString(escapeHTML(data.Subject))
+	// Same web fonts as the app (apps/web/src/index.css). Ignored by clients
+	// that strip remote font loading in email — the inline font-family
+	// stacks below already fall back to system sans-serif in that case.
+	b.WriteString("</title>\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500;600&display=swap\">\n</head>\n")
+	b.WriteString("<body style=\"margin:0;padding:0;background-color:" + colorMuted + ";\">\n")
+	b.WriteString("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color:" + colorMuted + ";padding:32px 16px;\">\n<tr><td align=\"center\">\n")
+	b.WriteString("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:480px;background-color:" + colorCard + ";border-radius:12px;border:1px solid " + colorBorder + ";\">\n")
+	b.WriteString("<tr><td style=\"padding:28px 32px 24px 32px;border-bottom:1px solid " + colorBorder + ";\">\n")
+	b.WriteString("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto;\"><tr>\n")
+	b.WriteString("<td style=\"padding-right:10px;vertical-align:middle;\"><img src=\"")
+	b.WriteString(logoURL)
+	b.WriteString("\" alt=\"")
+	b.WriteString(escapeHTML(data.BrandName))
+	b.WriteString("\" width=\"36\" height=\"36\" style=\"display:block;width:36px;height:36px;border:0;\"></td>\n")
+	b.WriteString("<td style=\"vertical-align:middle;\"><span style=\"font-family:'Syne',ui-sans-serif,sans-serif;font-size:19px;font-weight:700;color:" + colorForeground + ";\">")
+	b.WriteString(escapeHTML(data.BrandName))
+	b.WriteString("</span></td>\n</tr></table>\n</td></tr>\n")
+	b.WriteString("<tr><td style=\"padding:32px 32px 8px 32px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;\">\n")
+	b.WriteString("<h1 style=\"margin:0 0 14px 0;font-size:18px;line-height:1.4;color:" + colorForeground + ";font-weight:600;\">")
+	b.WriteString(escapeHTML(data.Heading))
+	b.WriteString("</h1>\n")
+	for _, p := range data.Paragraphs {
+		b.WriteString("<p style=\"margin:0 0 14px 0;font-size:14px;line-height:1.6;color:" + colorMutedForeground + ";\">")
+		b.WriteString(escapeHTML(p))
+		b.WriteString("</p>\n")
+	}
+	b.WriteString("</td></tr>\n")
+	if data.ButtonURL != "" {
+		b.WriteString("<tr><td style=\"padding:8px 32px 32px 32px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;\">\n")
+		b.WriteString("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\"><tr><td style=\"border-radius:8px;background-color:")
+		b.WriteString(primaryColor)
+		b.WriteString(";\">\n<a href=\"")
+		b.WriteString(buttonURL)
+		b.WriteString("\" style=\"display:inline-block;padding:10px 22px;font-size:14px;font-weight:600;color:" + colorPrimaryFg + ";text-decoration:none;\">")
+		b.WriteString(escapeHTML(data.ButtonLabel))
+		b.WriteString("</a>\n</td></tr></table>\n")
+		b.WriteString("<p style=\"margin:16px 0 0 0;font-size:12px;line-height:1.5;color:" + colorMutedForeground + ";word-break:break-all;\">")
+		b.WriteString(escapeHTML(data.ButtonURL))
+		b.WriteString("</p>\n</td></tr>")
+	}
+	b.WriteString("\n<tr><td style=\"padding:18px 32px;background-color:" + colorMuted + ";border-top:1px solid " + colorBorder + ";border-radius:0 0 12px 12px;font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;\">\n")
+	b.WriteString("<p style=\"margin:0;font-size:12px;line-height:1.5;color:" + colorMutedForeground + ";\">")
+	b.WriteString(escapeHTML(data.FooterText))
+	b.WriteString("</p>\n</td></tr>\n</table>\n</td></tr>\n</table>\n</body>\n</html>\n")
+	return b.String()
+}
 
 // brandFrom resolves display brand values, falling back to the app's own
 // defaults (its default primary color and logo asset) for anything the
@@ -127,12 +199,7 @@ func renderLayout(branding *plugin.BrandingInfo, subject, heading string, paragr
 		ButtonLabel:  buttonLabel,
 		FooterText:   fmt.Sprintf("This email was sent by %s. If you weren't expecting it, you can safely ignore it.", brandName),
 	}
-	var buf bytes.Buffer
-	if err := layoutHTML.Execute(&buf, data); err != nil {
-		// Fall back to a minimal plain body rather than sending nothing.
-		return "<p>" + template.HTMLEscapeString(heading) + "</p>"
-	}
-	return buf.String()
+	return buildLayoutHTML(data)
 }
 
 // renderText builds the plain-text alternative part, mirroring the HTML

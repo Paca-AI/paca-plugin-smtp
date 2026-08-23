@@ -37,7 +37,12 @@ type issuePasswordSetTokenResult struct {
 // userID, scoped to exactly that account.
 func (p *smtpPlugin) issuePasswordSetToken(userID string) (string, error) {
 	var res issuePasswordSetTokenResult
-	if err := plugin.CallHostFunction(hostIssuePasswordSetToken, issuePasswordSetTokenRequest{UserID: userID}, &res); err != nil {
+	// Wrapped in a closure rather than passed directly: TinyGo requires a
+	// go:wasmimport function to be called by name, not taken as a value.
+	call := func(reqPtr, reqLen, resPtrPtr, resLenPtr int64) {
+		hostIssuePasswordSetToken(reqPtr, reqLen, resPtrPtr, resLenPtr)
+	}
+	if err := plugin.CallHostFunction(call, issuePasswordSetTokenRequest{UserID: userID}, &res); err != nil {
 		return "", err
 	}
 	if res.Error != "" {
