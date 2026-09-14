@@ -2,7 +2,7 @@
   "id": "com.paca.smtp",
   "displayName": "SMTP Email",
   "description": "Sends transactional emails — new-account invites, task-assignment and mention notifications — over an admin-configured SMTP server.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minCoreVersion": "v0.13.3",
   "permissions": ["db.read", "db.write", "events.subscribe", "email.send", "users.password_set_token.issue"],
   "backend": {
@@ -28,7 +28,7 @@
           {
             "name": "requirePermissions",
             "scope": "global",
-            "permissions": ["users.write"]
+            "permissions": ["settings.write"]
           }
         ]
       },
@@ -41,7 +41,7 @@
           {
             "name": "requirePermissions",
             "scope": "global",
-            "permissions": ["users.write"]
+            "permissions": ["settings.write"]
           }
         ]
       },
@@ -54,7 +54,7 @@
           {
             "name": "requirePermissions",
             "scope": "global",
-            "permissions": ["users.write"]
+            "permissions": ["settings.write"]
           }
         ]
       },
@@ -109,7 +109,8 @@
         "label": "Email (SMTP)",
         "icon": "Mail",
         "component": "AdminSmtpSettingsPage",
-        "order": 50
+        "order": 50,
+        "requiredPermission": "settings.write"
       }
     ]
   }
