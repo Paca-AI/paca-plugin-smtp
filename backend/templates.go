@@ -278,36 +278,63 @@ type notificationCopy struct {
 	buttonLabel string // "View task" / "View document"
 }
 
+// copyForNotificationTopic builds the per-topic copy. When the event carries
+// an entity_title (the task/document the notification is about), it's woven
+// into both the heading (which doubles as the subject) and the body so the
+// recipient knows *which* task/doc from the subject line alone; when it's
+// empty (older core, or title couldn't be resolved) the original title-less
+// phrasing is used verbatim, so this degrades gracefully.
 func copyForNotificationTopic(topic string, data notificationPayload) notificationCopy {
 	actor := data.ActorName
 	if actor == "" {
 		actor = "Someone"
 	}
+	title := strings.TrimSpace(data.EntityTitle)
 	switch topic {
 	case topicNotificationMentioned:
-		return notificationCopy{
+		c := notificationCopy{
 			heading:     "You were mentioned",
 			paragraph:   fmt.Sprintf("%s mentioned you in a comment.", actor),
 			buttonLabel: "View task",
 		}
+		if title != "" {
+			c.heading = fmt.Sprintf(`You were mentioned in "%s"`, title)
+			c.paragraph = fmt.Sprintf(`%s mentioned you in a comment on "%s".`, actor, title)
+		}
+		return c
 	case topicNotificationDocMentioned:
-		return notificationCopy{
+		c := notificationCopy{
 			heading:     "You were mentioned",
 			paragraph:   fmt.Sprintf("%s mentioned you in a document.", actor),
 			buttonLabel: "View document",
 		}
+		if title != "" {
+			c.heading = fmt.Sprintf(`You were mentioned in "%s"`, title)
+			c.paragraph = fmt.Sprintf(`%s mentioned you in the document "%s".`, actor, title)
+		}
+		return c
 	case topicNotificationTaskDescMentioned:
-		return notificationCopy{
+		c := notificationCopy{
 			heading:     "You were mentioned",
 			paragraph:   fmt.Sprintf("%s mentioned you in a task's description.", actor),
 			buttonLabel: "View task",
 		}
+		if title != "" {
+			c.heading = fmt.Sprintf(`You were mentioned in "%s"`, title)
+			c.paragraph = fmt.Sprintf(`%s mentioned you in the description of "%s".`, actor, title)
+		}
+		return c
 	default: // topicNotificationAssigned
-		return notificationCopy{
+		c := notificationCopy{
 			heading:     "A task was assigned to you",
 			paragraph:   fmt.Sprintf("%s assigned a task to you.", actor),
 			buttonLabel: "View task",
 		}
+		if title != "" {
+			c.heading = fmt.Sprintf("Task assigned: %s", title)
+			c.paragraph = fmt.Sprintf(`%s assigned you the task "%s".`, actor, title)
+		}
+		return c
 	}
 }
 

@@ -37,6 +37,12 @@ type notificationPayload struct {
 	RecipientName   string `json:"recipient_name"`
 	ActorName       string `json:"actor_name"`
 	LinkURL         string `json:"link_url"`
+	// EntityTitle is the title of the task (assigned/mentioned/
+	// task_description_mentioned) or document (doc_mentioned) the
+	// notification is about. May be empty — an older core that predates the
+	// field, or one that couldn't resolve the title — in which case the copy
+	// below falls back to its original title-less phrasing.
+	EntityTitle string `json:"entity_title"`
 }
 
 // handleEvent returns an EventHandler that sends the appropriate email for
