@@ -129,3 +129,55 @@ func TestRenderLayout_EscapesBrandingFields(t *testing.T) {
 		t.Error("expected invalid branding PrimaryColorLight to fall back to defaultPrimaryColor")
 	}
 }
+
+// TestRenderNotificationEmail_IncludesEntityTitle covers the entity_title
+// support: when the event carries the task/document title it must appear in
+// both the subject and the body, and when it's empty the copy must fall back
+// to the original title-less phrasing unchanged.
+func TestRenderNotificationEmail_IncludesEntityTitle(t *testing.T) {
+	const title = "Ship the landing page"
+
+	cases := []struct {
+		name     string
+		topic    string
+		wantText string // a phrase that must appear in the body paragraph when titled
+	}{
+		{"assigned", topicNotificationAssigned, "assigned you the task \"" + title + "\""},
+		{"comment", topicNotificationMentioned, "mentioned you in a comment on \"" + title + "\""},
+		{"doc", topicNotificationDocMentioned, "mentioned you in the document \"" + title + "\""},
+		{"taskdesc", topicNotificationTaskDescMentioned, "in the description of \"" + title + "\""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			data := notificationPayload{ActorName: "Ada", EntityTitle: title, LinkURL: "https://paca.example/x"}
+			subject, html, text := renderNotificationEmail(nil, tc.topic, data)
+
+			if !strings.Contains(subject, title) {
+				t.Errorf("subject should contain the title %q, got %q", title, subject)
+			}
+			if !strings.Contains(text, tc.wantText) {
+				t.Errorf("plain-text body should contain %q, got %q", tc.wantText, text)
+			}
+			if !strings.Contains(html, title) {
+				t.Errorf("html body should contain the title %q", title)
+			}
+		})
+	}
+}
+
+func TestRenderNotificationEmail_FallsBackWithoutTitle(t *testing.T) {
+	// No EntityTitle → original copy, no stray quotes, no title fragment.
+	data := notificationPayload{ActorName: "Ada"}
+	subject, _, text := renderNotificationEmail(nil, topicNotificationAssigned, data)
+
+	if subject != "A task was assigned to you" {
+		t.Errorf("expected the original title-less subject, got %q", subject)
+	}
+	if !strings.Contains(text, "Ada assigned a task to you.") {
+		t.Errorf("expected the original title-less body, got %q", text)
+	}
+	if strings.Contains(text, "\"\"") {
+		t.Errorf("empty title must not leave empty quotes in the body: %q", text)
+	}
+}
