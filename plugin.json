@@ -26,9 +26,9 @@
           { "name": "optionalAuthn" },
           { "name": "requireFreshPassword" },
           {
-            "name": "requirePermissions",
+            "name": "requireActions",
             "scope": "global",
-            "permissions": ["settings.write"]
+            "actions": ["settings:write"]
           }
         ]
       },
@@ -39,9 +39,9 @@
           { "name": "optionalAuthn" },
           { "name": "requireFreshPassword" },
           {
-            "name": "requirePermissions",
+            "name": "requireActions",
             "scope": "global",
-            "permissions": ["settings.write"]
+            "actions": ["settings:write"]
           }
         ]
       },
@@ -52,9 +52,9 @@
           { "name": "optionalAuthn" },
           { "name": "requireFreshPassword" },
           {
-            "name": "requirePermissions",
+            "name": "requireActions",
             "scope": "global",
-            "permissions": ["settings.write"]
+            "actions": ["settings:write"]
           }
         ]
       },
@@ -65,9 +65,9 @@
           { "name": "optionalAuthn" },
           { "name": "requireFreshPassword" },
           {
-            "name": "requirePermissions",
+            "name": "requireActions",
             "scope": "global",
-            "permissions": ["users.read"]
+            "actions": ["users:read"]
           }
         ]
       },
@@ -78,9 +78,9 @@
           { "name": "optionalAuthn" },
           { "name": "requireFreshPassword" },
           {
-            "name": "requirePermissions",
+            "name": "requireActions",
             "scope": "global",
-            "permissions": ["users.read"]
+            "actions": ["users:read"]
           }
         ]
       }
@@ -110,7 +110,7 @@
         "icon": "Mail",
         "component": "AdminSmtpSettingsPage",
         "order": 50,
-        "requiredPermission": "settings.write"
+        "requiredPermission": "settings:write"
       }
     ]
   }

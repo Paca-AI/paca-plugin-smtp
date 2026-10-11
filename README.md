@@ -137,11 +137,11 @@ authenticated, fresh-password session (`optionalAuthn` + `requireFreshPassword`)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| `GET` | `/admin/config` | global `users.write` | Current SMTP settings (password never round-tripped) |
-| `PATCH` | `/admin/config` | global `users.write` | Update settings; blank `password` keeps the existing one |
-| `POST` | `/admin/test-email` | global `users.write` | Send a sample email to `{"to": "..."}` using the saved config |
-| `GET` | `/me/preferences` | global `users.read` | The caller's available (admin-enabled) events and which they've disabled |
-| `PATCH` | `/me/preferences` | global `users.read` | Update `{"disabled_events": [...]}` for the caller |
+| `GET` | `/admin/config` | global `settings:write` | Current SMTP settings (password never round-tripped) |
+| `PATCH` | `/admin/config` | global `settings:write` | Update settings; blank `password` keeps the existing one |
+| `POST` | `/admin/test-email` | global `settings:write` | Send a sample email to `{"to": "..."}` using the saved config |
+| `GET` | `/me/preferences` | global `users:read` | The caller's available (admin-enabled) events and which they've disabled |
+| `PATCH` | `/me/preferences` | global `users:read` | Update `{"disabled_events": [...]}` for the caller |
 
 ## Database schema
 
