@@ -32,11 +32,11 @@ type passwordSetEventPayload struct {
 // plugin treats that as "nothing to do" and no-ops, per the event-handling
 // switch below.
 type notificationPayload struct {
-	RecipientUserID string `json:"recipient_user_id"`
-	RecipientEmail  string `json:"recipient_email"`
-	RecipientName   string `json:"recipient_name"`
-	ActorName       string `json:"actor_name"`
-	LinkURL         string `json:"link_url"`
+	RecipientAccountID string `json:"recipient_account_id"`
+	RecipientEmail     string `json:"recipient_email"`
+	RecipientName      string `json:"recipient_name"`
+	ActorName          string `json:"actor_name"`
+	LinkURL            string `json:"link_url"`
 	// EntityTitle is the title of the task (assigned/mentioned/
 	// task_description_mentioned) or document (doc_mentioned) the
 	// notification is about. May be empty — an older core that predates the
@@ -70,7 +70,7 @@ func (p *smtpPlugin) handleEvent(topic string) plugin.EventHandler {
 		// immediately for every email sent afterward.
 		branding, _ := plugin.GetBranding()
 
-		var recipientUserID, recipientEmail, recipientName, subject, htmlBody, textBody string
+		var recipientAccountID, recipientEmail, recipientName, subject, htmlBody, textBody string
 
 		switch topic {
 		case topicUserCreated, topicUserPasswordReset:
@@ -83,28 +83,28 @@ func (p *smtpPlugin) handleEvent(topic string) plugin.EventHandler {
 			// configured, mandatory topic) that it's actually going to
 			// deliver a set-password link.
 			token, err := p.issuePasswordSetToken(data.UserID) //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
-			if err != nil { //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
+			if err != nil {                                    //nolint:staticcheck // SA4023: native (!wasip1) stub always errors; wasip1 build can return nil
 				p.log.Error("handleEvent(" + topic + "): issue password set token: " + err.Error())
 				return
 			}
 			publicURL, _ := p.cfg.Get("PUBLIC_URL")
 			inviteURL := strings.TrimRight(publicURL, "/") + "/set-password?token=" + token
 
-			recipientUserID, recipientEmail, recipientName = data.UserID, data.Email, data.FullName
+			recipientAccountID, recipientEmail, recipientName = data.UserID, data.Email, data.FullName
 			subject, htmlBody, textBody = renderPasswordSetEmail(branding, topic, data, inviteURL)
 		case topicNotificationAssigned, topicNotificationMentioned, topicNotificationDocMentioned, topicNotificationTaskDescMentioned:
 			data, err := plugin.JSONPayload[notificationPayload](evt)
 			if err != nil || data.RecipientEmail == "" {
 				return
 			}
-			recipientUserID, recipientEmail, recipientName = data.RecipientUserID, data.RecipientEmail, data.RecipientName
+			recipientAccountID, recipientEmail, recipientName = data.RecipientAccountID, data.RecipientEmail, data.RecipientName
 			subject, htmlBody, textBody = renderNotificationEmail(branding, topic, data)
 		default:
 			return
 		}
 
 		if !mandatory {
-			disabled, err := p.loadUserPreferences(recipientUserID)
+			disabled, err := p.loadUserPreferences(recipientAccountID)
 			if err == nil && containsString(disabled, topic) {
 				return
 			}

@@ -374,7 +374,7 @@ func TestHandleEvent_Notification_SkipsWhenRecipientOptedOut(t *testing.T) {
 
 	before := len(tc.Log.Entries())
 	payload, _ := json.Marshal(notificationPayload{
-		RecipientUserID: "u2", RecipientEmail: "u2@example.com", RecipientName: "U2",
+		RecipientAccountID: "u2", RecipientEmail: "u2@example.com", RecipientName: "U2",
 		ActorName: "Alice", LinkURL: "https://paca.example.com/tasks/1",
 	})
 	if ok := plugin.DispatchEvent(tc.PluginContext(), topicNotificationAssigned, payload); !ok {
@@ -391,7 +391,7 @@ func TestHandleEvent_Notification_ReachesSendBoundary(t *testing.T) {
 		`["notification.assigned"]`)
 
 	payload, _ := json.Marshal(notificationPayload{
-		RecipientUserID: "u2", RecipientEmail: "u2@example.com", RecipientName: "U2",
+		RecipientAccountID: "u2", RecipientEmail: "u2@example.com", RecipientName: "U2",
 		ActorName: "Alice", LinkURL: "https://paca.example.com/tasks/1",
 	})
 	if ok := plugin.DispatchEvent(tc.PluginContext(), topicNotificationAssigned, payload); !ok {
@@ -408,7 +408,7 @@ func TestHandleEvent_Notification_NoOpWhenRecipientEmailMissing(t *testing.T) {
 		`["notification.mentioned"]`)
 
 	before := len(tc.Log.Entries())
-	payload, _ := json.Marshal(notificationPayload{RecipientUserID: "u3", ActorName: "Alice"})
+	payload, _ := json.Marshal(notificationPayload{RecipientAccountID: "u3", ActorName: "Alice"})
 	if ok := plugin.DispatchEvent(tc.PluginContext(), topicNotificationMentioned, payload); !ok {
 		t.Fatal("expected notification.mentioned handler to be registered")
 	}
