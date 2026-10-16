@@ -92,7 +92,7 @@ smtp/
 |---|---|---|
 | `user.created` | yes | `user_id`, `username`, `full_name`, `email?` |
 | `user.password_reset` | yes | `user_id`, `username`, `full_name`, `email?` |
-| `notification.assigned` | no (default on) | `recipient_user_id`, `recipient_email?`, `recipient_name`, `actor_name`, `link_url` |
+| `notification.assigned` | no (default on) | `recipient_account_id`, `recipient_email?`, `recipient_name`, `actor_name`, `link_url` |
 | `notification.mentioned` | no (default on) | same shape as `notification.assigned` |
 | `notification.doc_mentioned` | no (default on) | same shape as `notification.assigned` |
 | `notification.task_description_mentioned` | no (default on) | same shape as `notification.assigned` |
